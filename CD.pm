@@ -5,7 +5,7 @@ use DynaLoader ();
 
 {
     no strict;
-    $VERSION = '0.03';
+    $VERSION = '0.04';
     @ISA = qw(DynaLoader);
     __PACKAGE__->bootstrap($VERSION);
 }
@@ -203,7 +203,54 @@ Returns the disc length time:
 
  my($minutes, $seconds) = $info->length;
 
+=item tracks
+
+Returns an array reference of I<Audio::CD::Info::Track> objects.
+
 =back
+
+
+=head1 Audio::CD::Info::Track Class
+
+=over 4
+
+=item length
+
+Returns the track length time:
+
+ my($minutes, $seconds) = $tinfo->length;
+
+=item pos
+
+Returns the track position on the CD:
+
+ my($minutes, $seconds) = $tinfo->pos;
+
+=item type
+
+Returns the track type (either TRACK_AUDIO or TRACK_DATA):
+
+ if ($tinfo->type == Audio::CD::TRACK_AUDIO) {
+   print "audio track\n";
+ } elsif ($tinfo->type == Audio::CD::TRACK_DATA) {
+   print "data track\n";
+ }
+
+
+=item is_audio
+
+Returns true if the track is an audio track; equivalent to the test:
+
+ $tinfo->type == Audio::CD::TRACK_AUDIO ? 1 : 0
+
+=item is_data
+
+Returns true if the track is a data track; equivalent to the test:
+
+ $tinfo->type == Audio::CD::TRACK_DATA ? 1 : 0
+
+=back
+
 
 =head1 SEE ALSO
 

@@ -16,8 +16,10 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 */
+/* modified for Audio::CD by dougm */
 
 #include "cdaudio.h"
+#include "cddb_lookup.h"
 #include "stdio.h"
 
 #define PACKAGE "Audio::CD"
@@ -31,6 +33,25 @@ static int timestamped_discid = 0;
 void cddb_verbose(void *h, int flag)
 {
     verbosity = flag;
+}
+
+static cddb_inexact_selection_func_t ixs_func = NULL;
+
+void cddb_inexact_selection_set(cddb_inexact_selection_func_t func)
+{
+    ixs_func = func;
+}
+
+static int inexact_selection(void)
+{
+    if (ixs_func) {
+	return (*ixs_func)();
+    }
+    else {
+	char inbuffer[256];
+	fgets(inbuffer, sizeof(inbuffer), stdin);
+	return strtol(inbuffer, NULL, 10);
+    }
 }
 
 int cdcd_cd_stat(int cd_desc, struct disc_info *disc)
@@ -58,7 +79,7 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
    struct cddb_entry entry;
    struct cddb_hello hello;
    struct cddb_query query;
-   char inbuffer[256], http_string[512], discid[CDINDEX_ID_SIZE];
+   char http_string[512], discid[CDINDEX_ID_SIZE];
    
    if(cdcd_cd_stat(cd_desc, &disc) < 0)
      return;
@@ -209,8 +230,9 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
 	        if (verbosity) printf("%d: %s / %s\n", index + 1, query.query_list[index].list_artist, query.query_list[index].list_title);
 	    if (verbosity) printf("%d: None of the above.\n", index + 1);
 	    if (verbosity) printf("> ");
-	    fgets(inbuffer, 256, stdin);
-	    selection = strtol(inbuffer, NULL, 10);
+
+	    selection = inexact_selection();
+
 	    if(selection > 0 && selection <= query.query_matches) {
 	       entry.entry_genre = query.query_list[selection - 1].list_genre;
 	       entry.entry_id = query.query_list[selection - 1].list_id;

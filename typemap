@@ -1,4 +1,5 @@
 Audio::CD::Info		T_PTROBJ
+Audio::CD::Info::Track  T_PTROBJ
 Audio::CD::Data		T_PTROBJ
 Audio::CD::Track	T_PTROBJ
 Audio::CD		T_PTROBJ

@@ -17,6 +17,6 @@ sub MY::postamble {
 
 cvs_tag :
 	cvs -d $(CVSROOT) tag v$(VERSION_SYM) . 
-	@echo update lib/Xmms.pm VERSION now 
+	@echo update CD.pm VERSION now 
 EOF
 } 

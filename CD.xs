@@ -3,8 +3,10 @@
 #include "XSUB.h"
 
 #include "cdaudio.h"
+#include "cddb_lookup.h"
 
 typedef struct disc_info   * Audio__CD__Info;
+typedef struct track_info  * Audio__CD__Info__Track;
 typedef struct disc_data   * Audio__CD__Data;
 typedef struct track_data  * Audio__CD__Track;
 typedef struct disc_volume * Audio__CD__Volume;
@@ -12,8 +14,6 @@ typedef struct __volume    * Audio__CD__VolumeRL;
 
 typedef int Audio__CD;
 typedef int Audio__CDDB;
-
-void cddb_lookup(int cd_desc, struct disc_data *data);
 
 #define CD_Info_present(info) info->disc_present
 #define CD_Info_mode(info) info->disc_mode
@@ -33,6 +33,14 @@ CD_Info_timeval(info->disc_track_time)
 CD_Info_timeval(info->disc_time)
 #define CD_Info_length(info) \
 CD_Info_timeval(info->disc_length)
+
+#define CD_Info_Track_length(tinfo)     CD_Info_timeval(tinfo->track_length)
+#define CD_Info_Track_pos(tinfo)        CD_Info_timeval(tinfo->track_pos)
+#define CD_Info_Track_type(tinfo)       tinfo->track_type
+#define CD_Info_Track_is_audio(tinfo) \
+(tinfo->track_type == CDAUDIO_TRACK_AUDIO)
+#define CD_Info_Track_is_data(tinfo) \
+(tinfo->track_type == CDAUDIO_TRACK_DATA)
 
 #define CD_Data_title(data) data->data_title
 #define CD_Data_artist(data) data->data_artist
@@ -70,6 +78,15 @@ static SV *CD_Data_track_new(struct track_data *td)
     return sv;
 }
 
+
+static SV *CD_Info_track_new(struct track_info *ti)
+{
+    SV *sv = newSV(0);
+    sv_setref_pv(sv, "Audio::CD::Info::Track", (void*)ti);
+    return sv;
+}
+
+
 static void boot_Audio__CD_constants(void)
 {
     HV *stash = gv_stashpv("Audio::CD", TRUE);
@@ -77,12 +94,21 @@ static void boot_Audio__CD_constants(void)
     newCONSTSUB(stash, "PAUSED", newSViv(CDAUDIO_PAUSED));
     newCONSTSUB(stash, "COMPLETED", newSViv(CDAUDIO_COMPLETED));
     newCONSTSUB(stash, "NOSTATUS", newSViv(CDAUDIO_NOSTATUS));
+    newCONSTSUB(stash, "TRACK_AUDIO", newSViv(CDAUDIO_TRACK_AUDIO));
+    newCONSTSUB(stash, "TRACK_DATA", newSViv(CDAUDIO_TRACK_DATA));
+}
+
+/* XXX */
+static int inexact_select_func(void)
+{
+    return 1;
 }
 
 MODULE = Audio::CD   PACKAGE = Audio::CD   PREFIX = cd_
 
 BOOT:
     boot_Audio__CD_constants();
+    cddb_inexact_selection_set(inexact_select_func);
 
 Audio::CD
 cd_init(sv_class, device="/dev/cdrom")
@@ -227,6 +253,10 @@ cd_set_volume(cd_desc, vol)
 MODULE = Audio::CD   PACKAGE = Audio::CD::Info   PREFIX = CD_Info_
 
 int
+CD_Info_present(info)
+   Audio::CD::Info info
+ 
+int
 CD_Info_mode(info)
    Audio::CD::Info info
 
@@ -246,12 +276,51 @@ void
 CD_Info_length(info)
    Audio::CD::Info info
 
+AV *
+CD_Info_tracks(info)
+   Audio::CD::Info info
+
+   PREINIT:
+   int track;
+
+   CODE:
+   RETVAL = newAV();
+   for(track = 0; track < info->disc_total_tracks; track++) {
+       av_push(RETVAL, CD_Info_track_new(&info->disc_track[track]));
+   }
+
+   OUTPUT:
+   RETVAL
+
 void
 DESTROY(info)
    Audio::CD::Info info
 
    CODE:
    safefree(info);
+
+MODULE = Audio::CD   PACKAGE = Audio::CD::Info::Track   PREFIX = CD_Info_Track_
+
+void
+CD_Info_Track_length(tinfo)
+   Audio::CD::Info::Track tinfo
+
+void
+CD_Info_Track_pos(tinfo)
+   Audio::CD::Info::Track tinfo
+
+int
+CD_Info_Track_type(tinfo)
+   Audio::CD::Info::Track tinfo
+
+int
+CD_Info_Track_is_audio(tinfo)
+   Audio::CD::Info::Track tinfo
+
+int
+CD_Info_Track_is_data(tinfo)
+   Audio::CD::Info::Track tinfo
+
 
 MODULE = Audio::CD   PACKAGE = Audio::CD::Data   PREFIX = CD_Data_
 
