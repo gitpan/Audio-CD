@@ -1,0 +1,20 @@
+Perl interface to libcdaudio: http://cdcd.undergrid.net/
+
+no docs yet, but here's an example:
+
+use Audio::CD ();
+
+my $id = Audio::CD->init;
+
+my $info = $id->stat;
+printf "tracks = %d\n", $info->total_tracks;
+
+my $data = $id->cddb_lookup;
+
+printf "%s / %s [%s]\n", $data->artist, $data->title, $data->genre;
+
+my $tracks = $data->tracks($info);
+for my $track (@$tracks) {
+    printf "%s\n", $track->name;
+}
+

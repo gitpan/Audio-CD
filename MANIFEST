@@ -1,0 +1,7 @@
+README
+MANIFEST
+Makefile.PL
+CD.pm
+CD.xs
+cddb_lookup.c
+typemap
