@@ -70,7 +70,19 @@ static SV *CD_Data_track_new(struct track_data *td)
     return sv;
 }
 
+static void boot_Audio__CD_constants(void)
+{
+    HV *stash = gv_stashpv("Audio::CD", TRUE);
+    newCONSTSUB(stash, "PLAYING", newSViv(CDAUDIO_PLAYING));
+    newCONSTSUB(stash, "PAUSED", newSViv(CDAUDIO_PAUSED));
+    newCONSTSUB(stash, "COMPLETED", newSViv(CDAUDIO_COMPLETED));
+    newCONSTSUB(stash, "NOSTATUS", newSViv(CDAUDIO_NOSTATUS));
+}
+
 MODULE = Audio::CD   PACKAGE = Audio::CD   PREFIX = cd_
+
+BOOT:
+    boot_Audio__CD_constants();
 
 Audio::CD
 cd_init(sv_class, device="/dev/cdrom")
@@ -168,7 +180,7 @@ cd_track_advance(cd_desc, endtrack, minutes, seconds=0)
     CODE:
     time.minutes = minutes;
     time.seconds = seconds;
-    RETVAL = cd_track_advance(cd_desc, endtrack, &time);
+    RETVAL = cd_track_advance(cd_desc, endtrack, time);
 
     OUTPUT:
     RETVAL
@@ -185,7 +197,7 @@ cd_advance(cd_desc, minutes, seconds=0)
     CODE:
     time.minutes = minutes;
     time.seconds = seconds;
-    RETVAL = cd_advance(cd_desc, &time);
+    RETVAL = cd_advance(cd_desc, time);
 
     OUTPUT:
     RETVAL
@@ -206,7 +218,17 @@ cd_set_volume(cd_desc, vol)
     Audio::CD cd_desc
     Audio::CD::Volume vol
 
+    CODE:
+    RETVAL = cd_set_volume(cd_desc, *vol);
+
+    OUTPUT:
+    RETVAL
+    
 MODULE = Audio::CD   PACKAGE = Audio::CD::Info   PREFIX = CD_Info_
+
+int
+CD_Info_mode(info)
+   Audio::CD::Info info
 
 int
 CD_Info_total_tracks(info)
@@ -290,6 +312,11 @@ CD_Track_extended(track)
 MODULE = Audio::CD   PACKAGE = Audio::CDDB   PREFIX = cddb_
 
 PROTOTYPES: disable
+
+void
+cddb_verbose(sv, flag)
+    SV *sv
+    int flag
 
 unsigned long
 cddb_discid(h)

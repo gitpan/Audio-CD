@@ -28,6 +28,11 @@ static int timestamp = 0;
 /* Timestamped discid */
 static int timestamped_discid = 0;
 
+void cddb_verbose(void *h, int flag)
+{
+    verbosity = flag;
+}
+
 int cdcd_cd_stat(int cd_desc, struct disc_info *disc)
 {
    cd_stat(cd_desc, disc);
@@ -35,7 +40,7 @@ int cdcd_cd_stat(int cd_desc, struct disc_info *disc)
       cd_close(cd_desc);
       cd_stat(cd_desc, disc);
       if(!disc->disc_present) {
-	 puts("No disc in drive");
+	 if (verbosity) puts("No disc in drive");
 	 return -1;
       }
    }
@@ -58,7 +63,7 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
    if(cdcd_cd_stat(cd_desc, &disc) < 0)
      return;
    
-   if(!verbosity)
+   if(0)
      cddb_read_disc_data(cd_desc, data);
    else {
       cddb_stat_disc_data(cd_desc, &entry);
@@ -82,7 +87,7 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
 	    free(proxy);
 	    proxy = NULL;
 	 } else 
-	    printf("Using proxy http://%s:%d/\n", proxy->server_name, proxy->server_port);	
+	    if (verbosity) printf("Using proxy http://%s:%d/\n", proxy->server_name, proxy->server_port);	
 	      		
 	 strncpy(hello.hello_program, PACKAGE, 256);
 	 strncpy(hello.hello_version, VERSION, 256);
@@ -92,36 +97,36 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
          do {
 	    switch(list.list_host[serverindex].host_protocol) {
 	     case CDDB_MODE_CDDBP:
-	       printf("Trying CDDB server cddbp://%s:%d/\n", list.list_host[serverindex].host_server.server_name, list.list_host[serverindex].host_server.server_port);
-	       sock = cddb_connect_server(&list.list_host[serverindex++], proxy, &hello);
+	       if (verbosity) printf("Trying CDDB server cddbp://%s:%d/\n", list.list_host[serverindex].host_server.server_name, list.list_host[serverindex].host_server.server_port);
+	       sock = cddb_connect_server(list.list_host[serverindex++], proxy, hello);
 	       break;
 	     case CDDB_MODE_HTTP:
-	       printf("Trying CDDB server http://%s:%d/%s\n", list.list_host[serverindex].host_server.server_name, list.list_host[serverindex].host_server.server_port, list.list_host[serverindex].host_addressing);
-	       sock = cddb_connect_server(&list.list_host[serverindex++], proxy, &hello, http_string, 512);
+	       if (verbosity) printf("Trying CDDB server http://%s:%d/%s\n", list.list_host[serverindex].host_server.server_name, list.list_host[serverindex].host_server.server_port, list.list_host[serverindex].host_addressing);
+	       sock = cddb_connect_server(list.list_host[serverindex++], proxy, hello, http_string, 512);
 	       break;
 	     case CDINDEX_MODE_HTTP:
-	       printf("Trying CD Index server http://%s:%d/%s\n", list.list_host[serverindex].host_server.server_name, list.list_host[serverindex].host_server.server_port, list.list_host[serverindex].host_addressing);
-	       sock = cdindex_connect_server(&list.list_host[serverindex++], proxy, http_string, 512);
+	       if (verbosity) printf("Trying CD Index server http://%s:%d/%s\n", list.list_host[serverindex].host_server.server_name, list.list_host[serverindex].host_server.server_port, list.list_host[serverindex].host_addressing);
+	       sock = cdindex_connect_server(list.list_host[serverindex++], proxy, http_string, 512);
 	       break;
 	     default:
-	       puts("Invalid protocol selected!");
+	       if (verbosity) puts("Invalid protocol selected!");
 	       return;
 	    }
-	    if(sock == -1) printf("Connection error: %s\n", cddb_message);
+	    if(sock == -1) fprintf(stderr, "Connection error: %s\n", cddb_message);
 	 } while(serverindex < list.list_len && sock == -1);
 	 
 	 if(sock == -1) {
-	    puts("Could not establish connection with any CDDB servers!");
+	    if (verbosity) puts("Could not establish connection with any CDDB servers!");
 	    if(conf.conf_proxy) free(proxy);
 	    cddb_generate_unknown_entry(cd_desc, data);
 	    return;
 	 }
 	 serverindex--;
-         puts("Connection established.");
+         if (verbosity) puts("Connection established.");
          
 	 switch(list.list_host[serverindex].host_protocol) {
 	  case CDDB_MODE_CDDBP:
-	    printf("Retrieving information on %02lx.\n", cddb_discid(cd_desc));
+	    if (verbosity) printf("Retrieving information on %02lx.\n", cddb_discid(cd_desc));
             if(cddb_query(cd_desc, sock, CDDB_MODE_CDDBP, &query) < 0) { 
 	       fprintf(stderr, "CDDB query error: %s", cddb_message);
 	       if(conf.conf_proxy) free(proxy);
@@ -130,7 +135,7 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
 	    }
             break;
 	  case CDDB_MODE_HTTP:
-	    printf("Retrieving information on %02lx.\n", cddb_discid(cd_desc));
+	    if (verbosity) printf("Retrieving information on %02lx.\n", cddb_discid(cd_desc));
 	    if(cddb_query(cd_desc, sock, CDDB_MODE_HTTP, &query, http_string) < 0) {
 	       fprintf(stderr, "CDDB query error: %s", cddb_message);
 	       if(conf.conf_proxy) free(proxy);
@@ -140,7 +145,7 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
 	    shutdown(sock, 2);
 	    close(sock);
 		 
-	    if((sock = cddb_connect_server(&list.list_host[serverindex], proxy, &hello, http_string, 512)) < 0) {
+	    if((sock = cddb_connect_server(list.list_host[serverindex], proxy, hello, http_string, 512)) < 0) {
 	       perror("HTTP server reconnection error");
 	       if(conf.conf_proxy) free(proxy);
 	       cddb_generate_unknown_entry(cd_desc, data);
@@ -149,15 +154,15 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
 	    break;
 	  case CDINDEX_MODE_HTTP:
 	    cdindex_discid(cd_desc, discid, CDINDEX_ID_SIZE);
-	    printf("Retrieving information on %s.\n", discid);
+	    if (verbosity) printf("Retrieving information on %s.\n", discid);
 	    if(cdindex_read(cd_desc, sock, data, http_string) < 0) {
-	       printf("No match for %s.\n", discid);
+	       if (verbosity) printf("No match for %s.\n", discid);
 	       if(conf.conf_proxy) free(proxy);
 	       cddb_generate_unknown_entry(cd_desc, data);
 	       return;
 	    }
-	    printf("Match for %s: %s / %s\nDownloading data...\n", discid, data->data_artist, data->data_title);
-	    cddb_write_disc_data(cd_desc, data);
+	    if (verbosity) printf("Match for %s: %s / %s\nDownloading data...\n", discid, data->data_artist, data->data_title);
+	    cddb_write_data(cd_desc, data);
 	    return;
 	 }
 	 
@@ -168,14 +173,14 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
          switch(query.query_match) {
           case QUERY_EXACT:
 	    if(strlen(query.query_list[0].list_artist) > 0)
-	      printf("Match for %02lx: %s / %s\nDownloading data...\n", cddb_discid(cd_desc), query.query_list[0].list_artist, query.query_list[0].list_title);
+	      if (verbosity) printf("Match for %02lx: %s / %s\nDownloading data...\n", cddb_discid(cd_desc), query.query_list[0].list_artist, query.query_list[0].list_title);
 	    else
-	      printf("Match for %02lx: %s\nDownloading data...\n", cddb_discid(cd_desc), query.query_list[0].list_title);
+	      if (verbosity) printf("Match for %02lx: %s\nDownloading data...\n", cddb_discid(cd_desc), query.query_list[0].list_title);
 	    entry.entry_genre = query.query_list[0].list_genre;
 	    entry.entry_id = query.query_list[0].list_id;
 	    switch(list.list_host[serverindex].host_protocol) {
 	      case CDDB_MODE_CDDBP:
-		if(cddb_read(cd_desc, sock, CDDB_MODE_CDDBP, &entry, data) < 0) {
+		if(cddb_read(cd_desc, sock, CDDB_MODE_CDDBP, entry, data) < 0) {
 		   perror("CDDB read error");
 		   cddb_generate_unknown_entry(cd_desc, data);
 		   return;
@@ -183,7 +188,7 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
 		cddb_quit(sock);
 		break;
 	      case CDDB_MODE_HTTP:
-		if(cddb_read(cd_desc, sock, CDDB_MODE_HTTP, &entry, data, http_string) < 0) {
+		if(cddb_read(cd_desc, sock, CDDB_MODE_HTTP, entry, data, http_string) < 0) {
 		   perror("CDDB read error");
 		   cddb_generate_unknown_entry(cd_desc, data);
 		   return;
@@ -195,24 +200,24 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
 	    }
 	    break;
           case QUERY_INEXACT:
-	    printf("Inexact match for %02lx.\n", cddb_discid(cd_desc));
-	    puts("Please choose from the following inexact matches:");
+	    if (verbosity) printf("Inexact match for %02lx.\n", cddb_discid(cd_desc));
+	    if (verbosity) puts("Please choose from the following inexact matches:");
 	    for(index = 0; index < query.query_matches; index++)
 	      if(strlen(query.query_list[index].list_artist) < 1)
-		printf("%d: %s\n", index + 1, query.query_list[index].list_title);
+		if (verbosity) printf("%d: %s\n", index + 1, query.query_list[index].list_title);
 	      else
-	        printf("%d: %s / %s\n", index + 1, query.query_list[index].list_artist, query.query_list[index].list_title);
-	    printf("%d: None of the above.\n", index + 1);
-	    printf("> ");
+	        if (verbosity) printf("%d: %s / %s\n", index + 1, query.query_list[index].list_artist, query.query_list[index].list_title);
+	    if (verbosity) printf("%d: None of the above.\n", index + 1);
+	    if (verbosity) printf("> ");
 	    fgets(inbuffer, 256, stdin);
 	    selection = strtol(inbuffer, NULL, 10);
 	    if(selection > 0 && selection <= query.query_matches) {
 	       entry.entry_genre = query.query_list[selection - 1].list_genre;
 	       entry.entry_id = query.query_list[selection - 1].list_id;
-	       puts("Downloading data...");
+	       if (verbosity) puts("Downloading data...");
 	       switch(list.list_host[serverindex].host_protocol) {
 	         case CDDB_MODE_CDDBP:
-		   if(cddb_read(cd_desc, sock, CDDB_MODE_CDDBP, &entry, data) < 0) {
+		   if(cddb_read(cd_desc, sock, CDDB_MODE_CDDBP, entry, data) < 0) {
 		      perror("CDDB read error");
 		      cddb_generate_unknown_entry(cd_desc, data);
 		      return;
@@ -220,7 +225,7 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
 		   cddb_quit(sock);
 		   break;
 	         case CDDB_MODE_HTTP:
-		   if(cddb_read(cd_desc, sock, CDDB_MODE_HTTP, &entry, data, http_string) < 0) {
+		   if(cddb_read(cd_desc, sock, CDDB_MODE_HTTP, entry, data, http_string) < 0) {
 		      perror("CDDB read error");
 		      cddb_generate_unknown_entry(cd_desc, data);
 		      return;
@@ -232,11 +237,11 @@ void cddb_lookup(int cd_desc, struct disc_data *data)
 	       break;
 	    }
           case QUERY_NOMATCH:
-	    printf("No match for %02lx.\n", cddb_discid(cd_desc));
+	    if (verbosity) printf("No match for %02lx.\n", cddb_discid(cd_desc));
 	    cddb_generate_unknown_entry(cd_desc, data);
          }
          close(sock);
-         cddb_write_disc_data(cd_desc, data);
+         cddb_write_data(cd_desc, data);
       }
    }
    return; 

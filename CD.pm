@@ -5,7 +5,7 @@ use DynaLoader ();
 
 {
     no strict;
-    $VERSION = '0.02';
+    $VERSION = '0.03';
     @ISA = qw(DynaLoader);
     __PACKAGE__->bootstrap($VERSION);
 }
@@ -171,6 +171,13 @@ Returns an array reference of I<Audio::CD::Track> objects.
 =head1 Audio::CD::Info Class
 
 =over 4
+
+=item mode
+
+Returns the CD mode, one of PLAYING, PAUSED, COMPLETED, NOSTATUS;
+
+ my $track = $info->mode;
+ print "playing" if $info->mode == Audio::CD::PLAYING;
 
 =item total_tracks
 
