@@ -5,3 +5,4 @@ CD.pm
 CD.xs
 cddb_lookup.c
 typemap
+eg/cddb_lookup.pl

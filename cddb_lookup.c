@@ -28,14 +28,7 @@ static int timestamp = 0;
 /* Timestamped discid */
 static int timestamped_discid = 0;
 
-int
-#if __STDC__
-cdcd_cd_stat(int cd_desc, struct disc_info *disc)
-#else
-cdcd_cd_stat(cd_desc, disc)
-   int cd_desc;
-   struct disc_info *disc;
-#endif
+int cdcd_cd_stat(int cd_desc, struct disc_info *disc)
 {
    cd_stat(cd_desc, disc);
    if(!disc->disc_present) {
